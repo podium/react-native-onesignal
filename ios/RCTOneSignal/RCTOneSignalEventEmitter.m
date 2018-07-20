@@ -1,10 +1,3 @@
-//
-//  RCTOneSignalEventEmitter.m
-//  RCTOneSignal
-//
-//  Created by Brad Hesse on 2/8/18.
-//
-
 #import "RCTOneSignalEventEmitter.h"
 #if __has_include(<OneSignal/OneSignal.h>)
 #import <OneSignal/OneSignal.h>
@@ -12,6 +5,7 @@
 #import "OneSignal.h"
 #endif
 
+#import "RCTOneSignal.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
@@ -25,6 +19,10 @@ static BOOL _didStartObserving = false;
 
 + (BOOL)hasSetBridge {
     return _didStartObserving;
+}
+
++(BOOL)requiresMainQueueSetup {
+    return YES;
 }
 
 /*
@@ -89,6 +87,27 @@ RCT_EXPORT_MODULE(RCTOneSignal)
 
 
 #pragma mark Exported Methods
+
+RCT_EXPORT_METHOD(setRequiresUserPrivacyConsent:(BOOL)required) {
+    [OneSignal setRequiresUserPrivacyConsent:required];
+}
+
+RCT_EXPORT_METHOD(provideUserConsent:(BOOL)granted) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [OneSignal consentGranted:granted];
+    });
+}
+
+RCT_REMAP_METHOD(userProvidedPrivacyConsent, resolver: (RCTPromiseResolveBlock)resolve
+                 rejecter:(RCTPromiseRejectBlock)reject) {
+    resolve(@(!OneSignal.requiresUserPrivacyConsent));
+}
+
+RCT_EXPORT_METHOD(initWithAppId:(NSString *)appId settings:(NSDictionary *)settings) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [[RCTOneSignal sharedInstance] configureWithAppId:appId settings:settings];
+    });
+}
 
 RCT_EXPORT_METHOD(promptForPushNotificationPermissions:(RCTResponseSenderBlock)callback) {
     [OneSignal promptForPushNotificationsWithUserResponse:^(BOOL accepted) {
